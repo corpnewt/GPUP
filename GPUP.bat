@@ -381,25 +381,37 @@ for /l %%a in (1, 1, !%~1.Count!) do (
 )
 goto :EOF
 
-:getperf <value> <return>
-if "%~1" == "0" (
-    set "%~2=System Default"
-) else if "%~1" == "1" (
-    set "%~2=Power Saving"
-) else if "%~1" == "2" (
-    set "%~2=High Performance"
+:getperf <value> <return> <pad>
+if not "%~3" == "" (
+    if "%~1" == "0" (
+        set "%~2=  System Default"
+    ) else if "%~1" == "1" (
+        set "%~2=Power Saving    "
+    ) else if "%~1" == "2" (
+        set "%~2=High Performance"
+    ) else (
+        set "%~2=Unknown (%~1)     "
+    )
 ) else (
-    set "%~2=Unknown (%~1)"
+    if "%~1" == "0" (
+        set "%~2=System Default"
+    ) else if "%~1" == "1" (
+        set "%~2=Power Saving"
+    ) else if "%~1" == "2" (
+        set "%~2=High Performance"
+    ) else (
+        set "%~2=Unknown (%~1)"
+    )
 )
 goto :EOF
 
 :printlist <prefix> <pad>
 for /l %%a in (1, 1, !%~1.Count!) do (
-    call :getperf "!%~1[%%a].Value!" "val"
+    call :getperf "!%~1[%%a].Value!" "val" "true"
     if /i "%~3"=="numbers" (
-        echo %~2%%a. !%~1[%%a].Name! = !val!
+        echo %~2%%a. !val! - !%~1[%%a].Name!
     ) else (
-        echo %~2!%~1[%%a].Name! = !val!
+        echo %~2!val! - !%~1[%%a].Name!
     )
 )
 goto :EOF
