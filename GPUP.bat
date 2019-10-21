@@ -386,11 +386,11 @@ if not "%~3" == "" (
     if "%~1" == "0" (
         set "%~2=  System Default"
     ) else if "%~1" == "1" (
-        set "%~2=Power Saving    "
+        set "%~2=    Power Saving"
     ) else if "%~1" == "2" (
         set "%~2=High Performance"
     ) else (
-        set "%~2=Unknown (%~1)     "
+        set "%~2=     Unknown (%~1)"
     )
 ) else (
     if "%~1" == "0" (
@@ -405,34 +405,85 @@ if not "%~3" == "" (
 )
 goto :EOF
 
-:printlist <prefix> <pad>
+:printlist <prefix> <pad> <number>
+setlocal
 for /l %%a in (1, 1, !%~1.Count!) do (
     call :getperf "!%~1[%%a].Value!" "val" "true"
-    if /i "%~3"=="numbers" (
+    if /i not "%~3"=="" (
         echo %~2%%a. !val! - !%~1[%%a].Name!
     ) else (
         echo %~2!val! - !%~1[%%a].Name!
     )
 )
+endlocal
 goto :EOF
 
 :getprefs <var_prefix>
 set "prefix=%~1"
 set /a !prefix!.Count=0
+set /a typelist.Count=0
 for /f "tokens=*" %%i in ('reg.exe query "HKCU\Software\Microsoft\DirectX\UserGpuPreferences" 2^> nul') do (
     REM Verify that we have "    REG_SZ    GpuPreference" in our string
     set "temp=%%i"
     set "tcheck=!temp:    REG_SZ    GpuPreference=!"
     if NOT "!tcheck!" == "!temp!" (
-        set /a !prefix!.Count+=1
-        call :setvar "!prefix![!%prefix%.Count!].Name" "!tcheck:~0,-3!"
-        call :setvar "!prefix![!%prefix%.Count!].Value" "!tcheck:~-2,1!"
+        REM Gather the name and value - then see if we have that in our
+        REM typelist already
+        call :setvar "typename" "!tcheck:~0,-3!"
+        call :setvar "typevalue" "!tcheck:~-2,1!"
+        call :expandvar "count" "temp.!typevalue!.Count"
+        if "!count!" == "" (
+            call :setnum "temp.!typevalue!.Count" 1
+            call :setnum "count" 1
+        ) else (
+            call :setnum "temp.!typevalue!.Count" !count!+1
+        )
+        call :expandvar "count" "temp.!typevalue!.Count"
+        call :setvar "temp.!typevalue![!count!]" "!typename!"
+        REM See if this exists in our typelist already
+        call :setvar "found" "false"
+        for /l %%b in (1, 1, !typelist.Count!) do (
+            if /i "!typelist[%%b]!" == "!typevalue!" (
+                REM Found a match
+                call :setvar "found" "true"
+            )
+        )
+        if /i "!found!" == "false" (
+            REM Didn't find it - increment our count
+            call :setnum "typelist.Count" !typelist.Count!+1
+            call :setvar "typelist[!typelist.Count!]" "!typevalue!"
+        )
     )
+)
+for /l %%a in (1, 1, !typelist.Count!) do (
+    REM Get our current type and how many there are
+    call :setvar "current" "!typelist[%%a]!"
+    call :expandvar "currentcount" "temp.!current!.Count"
+    for /l %%b in (1, 1, !currentcount!) do (
+        REM Increment our total count
+        call :expandvar "prefixcount" "!prefix!.Count"
+        call :setnum "!prefix!.Count" !prefixcount!+1
+        call :setnum "prefixcount" !prefixcount!+1
+        REM Get the current value, and set it in our prefixed list
+        call :expandvar "value" "temp.!current![%%b]"
+        call :setvar "!prefix![!prefixcount!].Name" "!value!"
+        call :setvar "!prefix![!prefixcount!].Value" "!current!"
+    )
+    REM Clean up our temp counts
+    call :setnum "temp.!current!.Count" 0
 )
 goto :EOF
 
+:expandvar <into_name> <from_name>
+set "%~1=!%~2!"
+goto :EOF
+
 :setvar <var_name> <value>
-set %~1=%~2
+set "%~1=%~2"
+goto :EOF
+
+:setnum <var_name> <value>
+set /a %~1=%~2
 goto :EOF
 
 REM Pulled from here: https://stackoverflow.com/a/22971891
