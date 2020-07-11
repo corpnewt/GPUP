@@ -223,6 +223,7 @@ echo.
 echo 1. Add New Preference
 echo 2. Remove Existing Preference
 echo 3. Update Existing Preference
+echo 4. Validate Targets
 echo.
 echo Q. Quit
 echo.
@@ -237,6 +238,8 @@ if "!menu!"=="" (
     goto :rempref
 ) else if "!menu!"=="3" (
     goto :editpref
+) else if "!menu!"=="4" (
+    goto :validatetargets
 )
 goto :mainmenu
 
@@ -372,6 +375,50 @@ if "!menu!"=="" (
     )
 )
 goto :editpref
+
+:validatetargets
+call :header
+echo Gathering and validating targets...
+call :getprefs "gpu"
+echo.
+set /a rem.Count=0
+set /a add.Count=0
+for /l %%a in (1, 1, !gpu.Count!) do (
+    if NOT EXIST "!gpu[%%a].Name!" (
+        set /a rem.Count=!rem.Count! + 1
+        set "rem[!rem.Count!].Name=!gpu[%%a].Name!"
+    )
+)
+if "!rem.Count!"=="0" (
+    echo Nothing to remove.
+    echo.
+    echo Press any key to return to the main menu...
+    pause > nul
+    goto :mainmenu
+)
+:remprompt
+call :header
+set "menu="
+REM We have something to remove - let's prompt and process
+if "!rem.Count!"=="1" (
+    set "val=it"
+    echo Found 1 orphaned target:
+) else (
+    set "val=them"
+    echo Found !rem.Count! orphaned targets:
+)
+echo.
+for /l %%a in (1, 1, !rem.Count!) do (
+    echo   !rem[%%a].Name!
+)
+echo.
+set /p "menu=Would you like to remove !val!? [y/n]:  "
+if /i "!menu!"=="n" (
+    goto :mainmenu
+) else if /i "!menu!"=="y" (
+    goto :process
+)
+goto :remprompt
 
 :copylist <prefix_from> <prefix_to>
 set /a %~2.Count=!%~1.Count!
