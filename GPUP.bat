@@ -1,7 +1,7 @@
+@echo off
 :::::::::::::::::::::::::::::::::::::::::
 REM Automatically check & get admin rights
 :::::::::::::::::::::::::::::::::::::::::
-@echo off
 
 :checkPrivileges
 NET FILE 1>NUL 2>NUL
@@ -31,7 +31,6 @@ cd /d %~dp0
 ::::::::::::::::::::::::::::
 ::START
 ::::::::::::::::::::::::::::
-
 setlocal enabledelayedexpansion
 
 REM Setup some default values
@@ -40,43 +39,32 @@ set /a rem.Count=0
 set "thisdir=%~dp0"
 set "manual=false"
 
+REM Check if wee need to process anything dropped
+if "%~1%"=="" ( goto mainmenu )
+
+REM Gather the arguments passed
+:getArg
+if not "%~1"=="" (
+    set "added=%~1"
+    REM Verify it's a valid path
+    if EXIST "!added!" (
+        REM Check if it ends in .exe
+        if /i "!added:~-4!"==".exe" (
+            REM Add it to the list
+            set /a add.Count=%add.Count%+1
+            set "add[!add.Count!].Name=!added!"
+            set "add[!add.Count!].Value=2"
+        )
+    )
+    shift
+    goto getArg
+)
+
 :process
 set /a added.Count=0
 set /a removed.Count=0
 call :header
 echo Gathering current tasks...
-if /i "!manual!"=="false" (
-    REM Check for any passed args
-    if NOT "%~1" == "" (
-        REM Verify the passed arg is a valid path
-        set "added=%~1"
-        if NOT EXIST "!added!" (
-            echo   "!added!" does not exist...
-            echo     Enabling manual mode...
-            set "manual=true"
-            timeout 3 > nul
-            goto :mainmenu
-        )
-        if /i NOT "!added:~-4!" == ".exe" (
-            echo   "!added!" is not an executable...
-            echo     Enabling manual mode...
-            set "manual=true"
-            timeout 3 > nul
-            goto :mainmenu
-        )
-        call :getperf "2" "val"
-        echo   Found "!added!" - adding as !val!...
-        set /a add.Count=1
-        set "add[1].Name=!added!"
-        set "add[1].Value=2"
-    ) else (
-        echo   No passed arguments...
-        echo     Enabling manual mode...
-        set "manual=true"
-        REM timeout 3 > nul
-        goto :mainmenu
-    )
-)
 REM Let's check removals first
 if not "!rem.Count!" == "0" (
     echo.
@@ -208,6 +196,7 @@ goto :EOF
 
 :mainmenu
 set "menu="
+set "manual=true"
 REM This is the interactive mode in case we have no defaults
 call :header
 REM Get our current prefs
